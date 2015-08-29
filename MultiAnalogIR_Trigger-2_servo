@@ -1,8 +1,8 @@
 /*
  *
  *
- * This program sequentially reads n Sharp GP2Y0A710K0F 100-500cm IR distance sensors then test to see if the 
- * reading is higher than the floor by an amount greater than the variable "hysteresis", 
+ * This program sequentially reads n Sharp GP2Y0A710K0F 100-500cm IR distance sensors then test to see if the
+ * reading is higher than the floor by an amount greater than the variable "hysteresis",
  * if it is, the program extends the servo.
  *
  *Then it sets a "lastMoved" variable for each sensor/servo stationwith the time and blocks all further movement or
@@ -104,45 +104,49 @@ void setup() {
 
 
 void loop() {
-  
+
   if (millis() > lastCalibration + 1800000) {   //recalibrate floor height every 30 minutes
     //do nothing for now, someday recalibrate to compensate for sensor drift
     lastCalibration = millis();
   }
   for ( int i = 0; i < number_of_stations; i++) {
-    if (testLastMoveDelay(i)) {                         //enough time since last move?
-      currentDistance = sensorRead(i);
-      difference = currentDistance - floorHeight;
-      if (debug) {
-        Serial.print("sensor ");
-        Serial.print(i);
-        Serial.print(" = ");
-        Serial.println(currentDistance);
-        Serial.print("difference ");
-        Serial.print(i);
-        Serial.print(" = ");
-        Serial.println(difference);
-      }
+    //if (testLastMoveDelay(i)) {                         //enough time since last move?
+    currentDistance = sensorRead(i);
+    difference = currentDistance - floorHeight;
+    if (debug) {
+      Serial.print("sensor ");
+      Serial.print(i);
+      Serial.print(" = ");
+      Serial.println(currentDistance);
+      Serial.print("difference ");
+      Serial.print(i);
+      Serial.print(" = ");
+      Serial.println(difference);
+    }
 
-      if ((currentDistance > floorHeight + hysteresis * 2) && !servoMovedTest(i)) {
-        //myservo1.write(servoExtend, extendSpeed);
-        moveServo(i, extendAngle, extendSpeed);
-        writeServoMoved(i, true);
-        if (debug) {
-          Serial.print(" /////////////////////////////////////      call extend servo    ////////////////////////////////// ");
-        }
-        writeLastMoveTime(i);
+    if ((testLastMoveDelay(i, 500)) &&                           //.5 second since servo moved to home position
+        !servoMovedTest(i)                                        //servo is not already extended
+        && (currentDistance > floorHeight + hysteresis * 2)) {    //sense something at least 2*hysteresis above floor
+      //myservo1.write(servoExtend, extendSpeed);
+      moveServo(i, extendAngle, extendSpeed);
+      writeServoMoved(i, true);
+      if (debug) {
+        Serial.print(" /////////////////////////////////////     extend servo    ////////////////////////////////// ");
       }
-      else if ((currentDistance < floorHeight + hysteresis) && servoMovedTest(i)) {
-        //myservo1.write(servoHome, 255);
-        moveServo(i, servoHome, 255);
-        writeServoMoved(i, false);
-        writeLastMoveTime(i);
-        if (debug) {
-          Serial.print("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\     call home servo      \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\");
-        }
+      writeLastMoveTime(i);
+    }
+    else if ((testLastMoveDelay(i, 2000))                           //2 seconds since last servo extend
+             && servoMovedTest(i)                                   //servo is in extended position
+             && (currentDistance < floorHeight + hysteresis)) {     //sense something below hysteresis height
+      //myservo1.write(servoHome, 255);
+      moveServo(i, servoHome, 255);
+      writeServoMoved(i, false);
+      writeLastMoveTime(i);
+      if (debug) {
+        Serial.print("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\     home servo      \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\");
       }
     }
   }
 }
+
 
