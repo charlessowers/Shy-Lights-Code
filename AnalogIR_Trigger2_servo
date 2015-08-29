@@ -1,0 +1,101 @@
+/*
+ * 
+ *
+ * This program reads a Sharp GP2Y0A710K0F 100-500cm IR distance sensor by means of an 
+ * AnalogRead in main loop. Then test to see if reading is higher than the floor by an
+ * amount greater than the variable "hysteresis", if it is, the program extends the servo.
+ *
+ *Then it sets a "lastMoved" variable with the time and blocks all further movement or 
+ *sensor reads until a period of time has passed.
+ *
+ *do do:
+ *filter out fast changing sensor values - people moving too fast
+ *write calibration routine that compensate for any sensor drift on floor reading
+ *extend for 10 sensors and 10 servos, maybe with different calibration value for each sensor
+ *
+ * Charles Sowers 8/27/15
+ *
+  */
+
+#include <VarSpeedServo.h>
+
+VarSpeedServo myservo;  // create servo object to control a servo
+// a maximum of eight servo objects can be created - not sure why, can I change for Mega?
+
+boolean debug = true;
+boolean servoMoved = false;
+
+const int sensorPin = 2;                //analog pin 0
+const int SAMPLE_FRAME_LENGTH = 20;     //number of samples to average
+const int servoPin = 9;                 // the digital pin used for the servo
+int hysteresis = 25;
+int servoHome = 0;
+int homeSpeed = 30;
+int servoExtend = 150;
+
+int currentDistance = 0;
+int previousDistance = 0;
+int difference;
+
+int floorHeight = 1000;
+
+long lastMove = 0;                   //holds time of last move
+long lastCalibration = 0;
+
+
+
+void setup() {
+  myservo.attach(servoPin, 750, 2200); // attaches the servo on pin 9 to the servo object
+  myservo.write(servoHome, 255, true);        // home the servo, as fast as possible, wait until done
+  Serial.begin(115200);
+  
+  analogReference(EXTERNAL);        //Aref connected to on-board 3.3v
+  
+  while (millis() < 5000) {           //calibrate floor height reading
+    currentDistance = analogRead(sensorPin);
+    if (currentDistance < floorHeight) {
+      floorHeight = currentDistance;
+    }
+  }
+  lastCalibration = millis();
+  Serial.println("setup AnalogIR_Trigger-2_servo");
+  Serial.println("threshold on floor height");
+  Serial.print("floor height = ");
+  Serial.println(floorHeight);
+}
+
+
+
+void loop() {
+  //Serial.print("tick ");
+  if (millis() > lastCalibration + 1800000) {   //recalibrate floor height every 30 minutes
+    //do nothing for now, someday recalibrate to compensate for sensor drift
+    lastCalibration = millis();
+  }
+  if (millis() > lastMove + 3000) {             //enough time since last move?
+    currentDistance = analogRead(sensorPin);
+    difference = currentDistance - floorHeight;
+    if (debug) {
+      Serial.print("sensor value = ");
+      Serial.println(currentDistance);
+      Serial.print("difference = ");
+      Serial.println(difference);
+    }
+
+    if ((currentDistance > floorHeight + hysteresis * 2) && !servoMoved) {
+      myservo.write(servoExtend, homeSpeed);
+      servoMoved = true;
+      Serial.print(" /////////////////////////////////////      call extend servo    ////////////////////////////////// ");
+      Serial.println(servoMoved);
+      lastMove = millis();
+    }
+    else if ((currentDistance < floorHeight + hysteresis) && servoMoved) {
+      myservo.write(servoHome, 255);
+      servoMoved = false;
+      lastMove = millis();
+      Serial.print("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\     call home servo      \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\");
+      Serial.println(servoMoved);
+    }
+  }
+}
+
