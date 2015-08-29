@@ -35,6 +35,7 @@ boolean servoMoved2 = false;
 //    .
 //    .
 
+const int sensorPin0 = 0;                //analog pin 0
 const int sensorPin1 = 1;                //analog pin 1
 const int sensorPin2 = 2;                //analog pin 2
 //    .
@@ -43,15 +44,15 @@ const int sensorPin2 = 2;                //analog pin 2
 
 const int number_of_stations = 10;
 const int servoPin0 = 8;                 // the digital pin used for the servo
-const int servoPin1 = 9;
-const int servoPin2 = 10;
+const int servoPin1 = 10;
+const int servoPin2 = 9;
 //    .
 //    .
 //    .
 
 int hysteresis = 25;
 int servoHome = 0;                    //servo home position
-int extendSpeed = 30;                 //speed to extend servo
+int extendSpeed = 35;                 //speed to extend servo
 int extendAngle = 130;                //angle to extend servo
 
 int currentDistance = 0;
@@ -87,7 +88,8 @@ void setup() {
   analogReference(EXTERNAL);        //Aref connected to on-board 3.3v
 
   while (millis() < 5000) {           //calibrate floor height reading
-    currentDistance = analogRead(sensorPin1);
+    //currentDistance = analogRead(sensorPin2);
+    currentDistance = sensorRead(2);
     if (currentDistance < floorHeight) {
       floorHeight = currentDistance;
     }
